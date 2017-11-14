@@ -1,0 +1,4 @@
+#include "reverseshell/version.h"
+
+const char* reverseshell::version::GitDescribe="${ReverseShell_GIT_DESCRIBE}";
+const char reverseshell::version::GitHash[41]="${ReverseShell_GIT_HASH}";

@@ -1,0 +1,4 @@
+#include "reverseshelltests/testinputs.h"
+
+const std::string reverseshelltests::testinputs::testFileDirectory="@CMAKE_SOURCE_DIR@/tests/testdata/";
+
