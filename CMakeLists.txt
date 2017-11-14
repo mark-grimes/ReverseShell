@@ -25,7 +25,16 @@ configure_file( "${CMAKE_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_BINARY_DIR}/sr
 # Dependencies
 # TODO - allow overriding of the bundled versions with system versions
 #
+include_directories( ${CMAKE_SOURCE_DIR}/external/asio/include )
+# tell websocketpp to use asio standalone, and full C++11 support instead of boost stand-ins
+add_definitions( "-DASIO_STANDALONE -D_WEBSOCKETPP_CPP11_STRICT_ -D_WEBSOCKETPP_CPP11_STL_" )
+include_directories( ${CMAKE_SOURCE_DIR}/external/websocketpp )
 include_directories( ${CMAKE_SOURCE_DIR}/external/pstreams )
+#
+# Find OpenSSL
+#
+find_package( OpenSSL REQUIRED )
+include_directories( ${OPENSSL_INCLUDE_DIR} )
 
 
 include_directories( "${CMAKE_SOURCE_DIR}/include" )
@@ -33,6 +42,12 @@ aux_source_directory( "${CMAKE_SOURCE_DIR}/src" library_sources )
 list( REMOVE_ITEM library_sources "${CMAKE_SOURCE_DIR}/src/main.cpp" ) # main.cpp belongs only in the executable
 
 add_library( ${PROJECT_NAME}_LIB STATIC ${library_sources} "${CMAKE_BINARY_DIR}/src/version.cpp" )
+target_link_libraries( ${PROJECT_NAME}_LIB ${OPENSSL_LIBRARIES} )
+if( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
+	# For some reason linux gets "undefined reference to `pthread_create'" even though
+	# the code uses std::thread.
+	target_link_libraries( ${PROJECT_NAME}_LIB "pthread" )
+endif()
 add_executable( ${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/src/main.cpp" )
 target_link_libraries( ${PROJECT_NAME} ${PROJECT_NAME}_LIB )
 
