@@ -1,5 +1,7 @@
 # ReverseShell
 
+N.B. This is a work in progress and not yet functional.
+
 Creates a reverse shell over a secure websocket connection, i.e. it connects securely to a server and allows the server
 to run commands on the client. Offers security such as certificate pinning.
 
