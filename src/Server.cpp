@@ -80,6 +80,8 @@ void reverseshell::Server::listen( size_t port )
 	pImple_->server_.listen( port, errorCode );
 	if( errorCode )
 	{
+		std::lock_guard<std::mutex> isListeningLock(pImple_->isListeningMutex_);
+		pImple_->isListening_=false;
 		throw std::runtime_error( "reverseshell::Server listen error: "+errorCode.message() );
 	}
 
