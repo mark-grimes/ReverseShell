@@ -184,7 +184,7 @@ void reverseshell::ServerPrivateMembers::on_interrupt( websocketpp::connection_h
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ServerPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
 {
-	std::cout << "TLS is being initiated" << std::endl;
+	std::cout << "TLS is being initiated in the server" << std::endl;
 	namespace asio=websocketpp::lib::asio;
 	return std::make_shared<websocketpp::lib::asio::ssl::context>(asio::ssl::context::tlsv12);
 }
