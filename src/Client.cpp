@@ -46,7 +46,8 @@ reverseshell::Client::Client()
 {
 	pImple_->client_.set_access_channels(websocketpp::log::alevel::none);
 	//pImple_->client_.set_error_channels(websocketpp::log::elevel::all ^ websocketpp::log::elevel::info);
-	pImple_->client_.set_error_channels(websocketpp::log::elevel::none);
+	//pImple_->client_.set_error_channels(websocketpp::log::elevel::none);
+	pImple_->client_.set_error_channels(websocketpp::log::elevel::all);
 	pImple_->client_.set_tls_init_handler( std::bind( &ClientPrivateMembers::on_tls_init, pImple_.get(), std::placeholders::_1 ) );
 	pImple_->client_.init_asio();
 	pImple_->client_.set_open_handler( std::bind( &ClientPrivateMembers::on_open, pImple_.get(), std::placeholders::_1 ) );
@@ -98,10 +99,12 @@ void reverseshell::Client::setVerifyFile( const std::string& filename )
 
 void reverseshell::ClientPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
+	std::cout << "Connection has opened" << std::endl;
 }
 
 void reverseshell::ClientPrivateMembers::on_close( websocketpp::connection_hdl hdl )
 {
+	std::cout << "Connection has closed" << std::endl;
 }
 
 void reverseshell::ClientPrivateMembers::on_interrupt( websocketpp::connection_hdl hdl )
@@ -112,5 +115,6 @@ void reverseshell::ClientPrivateMembers::on_interrupt( websocketpp::connection_h
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ClientPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
 {
 	std::cout << "TLS is being initiated" << std::endl;
-	return nullptr;
+	namespace asio=websocketpp::lib::asio;
+	return std::make_shared<websocketpp::lib::asio::ssl::context>(asio::ssl::context::tlsv12);
 }
