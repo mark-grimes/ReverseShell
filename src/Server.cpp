@@ -168,20 +168,20 @@ void reverseshell::ServerPrivateMembers::on_http( websocketpp::connection_hdl hd
 
 void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has opened" << std::endl;
+	std::cout << "Connection has opened on the server" << std::endl;
 	std::lock_guard<std::mutex> myMutex( currentConnectionsMutex_ );
 	currentConnections_.emplace_back( hdl );
 }
 
 void reverseshell::ServerPrivateMembers::on_close( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has closed" << std::endl;
+	std::cout << "Connection has closed on the server" << std::endl;
 	if( !removeConnection(hdl) ) std::cout << "Couldn't find connection to remove" << std::endl;
 }
 
 void reverseshell::ServerPrivateMembers::on_interrupt( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has been interrupted" << std::endl;
+	std::cout << "Connection has been interrupted on the server" << std::endl;
 	if( !removeConnection(hdl) ) std::cout << "Couldn't find connection to remove" << std::endl;
 }
 

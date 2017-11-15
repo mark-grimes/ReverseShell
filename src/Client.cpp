@@ -103,17 +103,17 @@ void reverseshell::Client::setVerifyFile( const std::string& filename )
 
 void reverseshell::ClientPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has opened" << std::endl;
+	std::cout << "Connection has opened on the client" << std::endl;
 }
 
 void reverseshell::ClientPrivateMembers::on_close( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has closed" << std::endl;
+	std::cout << "Connection has closed on the client" << std::endl;
 }
 
 void reverseshell::ClientPrivateMembers::on_interrupt( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has been interrupted" << std::endl;
+	std::cout << "Connection has been interrupted on the client" << std::endl;
 }
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ClientPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
