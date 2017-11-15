@@ -33,6 +33,8 @@ namespace reverseshell
 	public:
 		typedef websocketpp::client<websocketpp::config::asio_tls> client_type;
 		client_type client_;
+		client_type::connection_ptr connection_;
+		std::mutex connectionMutex_;
 		std::string certificateChainFileName_;
 		std::string privateKeyFileName_;
 		std::string verifyFileName_;
@@ -72,18 +74,32 @@ reverseshell::Client::~Client()
 
 void reverseshell::Client::connect( const std::string& URI )
 {
-	websocketpp::lib::error_code errorCode;
-	auto pWebPPConnection=pImple_->client_.get_connection( URI, errorCode );
-	if( errorCode.value()!=0 ) throw std::runtime_error( "Unable to get the websocketpp connection - "+errorCode.message() );
+	{ // Block to limit scope of connectionLock
+		std::lock_guard<std::mutex> connectionLock(pImple_->connectionMutex_);
+		websocketpp::lib::error_code errorCode;
+		pImple_->connection_=pImple_->client_.get_connection( URI, errorCode );
+		if( errorCode.value()!=0 ) throw std::runtime_error( "Unable to get the websocketpp connection - "+errorCode.message() );
 
-	if( errorCode )
-	{
-		pImple_->client_.get_alog().write(websocketpp::log::alevel::app,errorCode.message());
-		throw std::runtime_error( errorCode.message() );
-	}
+		if( errorCode )
+		{
+			pImple_->connection_=nullptr;
+			pImple_->client_.get_alog().write(websocketpp::log::alevel::app,errorCode.message());
+			throw std::runtime_error( errorCode.message() );
+		}
 
-	pImple_->client_.connect( pWebPPConnection );
+		pImple_->client_.connect( pImple_->connection_ );
+	} // Need to release connectionLock_ before blocking in the run() call
 	pImple_->client_.run();
+}
+
+void reverseshell::Client::disconnect()
+{
+	std::lock_guard<std::mutex> connectionLock(pImple_->connectionMutex_);
+	if( pImple_->connection_ )
+	{
+		pImple_->connection_->close( websocketpp::close::status::normal, "Had enough. Bye." );
+		pImple_->connection_=nullptr;
+	}
 }
 
 void reverseshell::Client::setCertificateChainFile( const std::string& filename )

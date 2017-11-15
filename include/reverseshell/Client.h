@@ -40,6 +40,7 @@ namespace reverseshell
 
 		/** @brief Attempts to connect to the URI provided. Blocks until the connection has been terminated. */
 		void connect( const std::string& URI );
+		void disconnect();
 
 		void setCertificateChainFile( const std::string& filename );
 		void setPrivateKeyFile( const std::string& filename );
