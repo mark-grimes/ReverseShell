@@ -68,7 +68,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			reverseshell::Client client;
 			client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem");
 			std::this_thread::sleep_for( std::chrono::seconds(2) );
-			CHECK_NOTHROW( client.connect( "ws://localhost:9001/" ) );
+			CHECK_NOTHROW( client.connect( "wss://localhost:9001/" ) );
 		}
 	} // end of 'GIVEN "An instance of a Server"'
 } // end of 'SCENARIO ... Client Server interaction'
