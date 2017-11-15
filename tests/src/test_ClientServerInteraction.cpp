@@ -3,6 +3,7 @@
 #include <thread>
 #include <iostream>
 #include <condition_variable>
+#include "reverseshelltests/testinputs.h"
 #include "catch.hpp"
 
 /** @brief Starts the server on a separate thread so that it is non blocking. Stops the server on destruction. */
@@ -52,6 +53,9 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 	GIVEN( "An instance of a Server" )
 	{
 		reverseshell::Server server;
+		server.setCertificateChainFile(reverseshelltests::testinputs::testFileDirectory+"/server_cert.pem");
+		server.setPrivateKeyFile(reverseshelltests::testinputs::testFileDirectory+"/server_key.pem");
+
 
 		WHEN( "Starting the server on a separate thread" )
 		{
@@ -62,6 +66,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 		{
 			StartServer serverGuard( server, 9001 );
 			reverseshell::Client client;
+			client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem");
 			std::this_thread::sleep_for( std::chrono::seconds(2) );
 			CHECK_NOTHROW( client.connect( "ws://localhost:9001/" ) );
 		}
