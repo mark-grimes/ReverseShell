@@ -42,6 +42,7 @@ namespace reverseshell
 		std::string verifyFileName_;
 		std::string diffieHellmanParamsFileName_;
 
+		ClientPrivateMembers();
 		void on_open( websocketpp::connection_hdl hdl );
 		void on_close( websocketpp::connection_hdl hdl );
 		void on_interrupt( websocketpp::connection_hdl hdl );
@@ -52,16 +53,7 @@ namespace reverseshell
 reverseshell::Client::Client()
 	: pImple_( new ClientPrivateMembers )
 {
-	pImple_->state_=ClientPrivateMembers::State::Ready;
-	pImple_->client_.set_access_channels(websocketpp::log::alevel::none);
-	//pImple_->client_.set_error_channels(websocketpp::log::elevel::all ^ websocketpp::log::elevel::info);
-	//pImple_->client_.set_error_channels(websocketpp::log::elevel::none);
-	pImple_->client_.set_error_channels(websocketpp::log::elevel::all);
-	pImple_->client_.set_tls_init_handler( std::bind( &ClientPrivateMembers::on_tls_init, pImple_.get(), std::placeholders::_1 ) );
-	pImple_->client_.init_asio();
-	pImple_->client_.set_open_handler( std::bind( &ClientPrivateMembers::on_open, pImple_.get(), std::placeholders::_1 ) );
-	pImple_->client_.set_close_handler( std::bind( &ClientPrivateMembers::on_close, pImple_.get(), std::placeholders::_1 ) );
-	pImple_->client_.set_interrupt_handler( std::bind( &ClientPrivateMembers::on_interrupt, pImple_.get(), std::placeholders::_1 ) );
+	// No operation. Most work done in the ClientPrivateMembers constructor.
 }
 
 reverseshell::Client::Client( Client&& otherClient ) noexcept
@@ -141,6 +133,20 @@ void reverseshell::Client::setPrivateKeyFile( const std::string& filename )
 void reverseshell::Client::setVerifyFile( const std::string& filename )
 {
 	pImple_->verifyFileName_=filename;
+}
+
+reverseshell::ClientPrivateMembers::ClientPrivateMembers()
+{
+	state_=State::Ready;
+	client_.set_access_channels(websocketpp::log::alevel::none);
+	//client_.set_error_channels(websocketpp::log::elevel::all ^ websocketpp::log::elevel::info);
+	//client_.set_error_channels(websocketpp::log::elevel::none);
+	client_.set_error_channels(websocketpp::log::elevel::all);
+	client_.set_tls_init_handler( std::bind( &ClientPrivateMembers::on_tls_init, this, std::placeholders::_1 ) );
+	client_.init_asio();
+	client_.set_open_handler( std::bind( &ClientPrivateMembers::on_open, this, std::placeholders::_1 ) );
+	client_.set_close_handler( std::bind( &ClientPrivateMembers::on_close, this, std::placeholders::_1 ) );
+	client_.set_interrupt_handler( std::bind( &ClientPrivateMembers::on_interrupt, this, std::placeholders::_1 ) );
 }
 
 void reverseshell::ClientPrivateMembers::on_open( websocketpp::connection_hdl hdl )
