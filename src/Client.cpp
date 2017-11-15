@@ -32,9 +32,11 @@ namespace reverseshell
 	{
 	public:
 		typedef websocketpp::client<websocketpp::config::asio_tls> client_type;
+		enum class State { Ready, Connecting, Connected, Disconnecting };
 		client_type client_;
+		State state_;
+		mutable std::mutex stateMutex_;
 		client_type::connection_ptr connection_;
-		std::mutex connectionMutex_;
 		std::string certificateChainFileName_;
 		std::string privateKeyFileName_;
 		std::string verifyFileName_;
@@ -50,6 +52,7 @@ namespace reverseshell
 reverseshell::Client::Client()
 	: pImple_( new ClientPrivateMembers )
 {
+	pImple_->state_=ClientPrivateMembers::State::Ready;
 	pImple_->client_.set_access_channels(websocketpp::log::alevel::none);
 	//pImple_->client_.set_error_channels(websocketpp::log::elevel::all ^ websocketpp::log::elevel::info);
 	//pImple_->client_.set_error_channels(websocketpp::log::elevel::none);
@@ -74,8 +77,17 @@ reverseshell::Client::~Client()
 
 void reverseshell::Client::connect( const std::string& URI )
 {
-	{ // Block to limit scope of connectionLock
-		std::lock_guard<std::mutex> connectionLock(pImple_->connectionMutex_);
+	{ // Block to limit scope of stateLock
+		std::unique_lock<std::mutex> stateLock(pImple_->stateMutex_);
+		// If in the process of disconnecting, give a little time for it to take effect
+		for( size_t tries=0; pImple_->state_==ClientPrivateMembers::State::Disconnecting && tries<10; ++tries )
+		{
+			stateLock.unlock();
+			std::this_thread::sleep_for( std::chrono::milliseconds(50) );
+			stateLock.lock();
+		}
+
+		pImple_->state_=ClientPrivateMembers::State::Connecting;
 		websocketpp::lib::error_code errorCode;
 		pImple_->connection_=pImple_->client_.get_connection( URI, errorCode );
 		if( errorCode.value()!=0 ) throw std::runtime_error( "Unable to get the websocketpp connection - "+errorCode.message() );
@@ -83,23 +95,37 @@ void reverseshell::Client::connect( const std::string& URI )
 		if( errorCode )
 		{
 			pImple_->connection_=nullptr;
+			pImple_->state_=ClientPrivateMembers::State::Ready;
 			pImple_->client_.get_alog().write(websocketpp::log::alevel::app,errorCode.message());
 			throw std::runtime_error( errorCode.message() );
 		}
 
 		pImple_->client_.connect( pImple_->connection_ );
-	} // Need to release connectionLock_ before blocking in the run() call
+	} // Need to release stateLock before blocking in the run() call
 	pImple_->client_.run();
 }
 
 void reverseshell::Client::disconnect()
 {
-	std::lock_guard<std::mutex> connectionLock(pImple_->connectionMutex_);
-	if( pImple_->connection_ )
+	std::unique_lock<std::mutex> stateLock(pImple_->stateMutex_);
+	// If in the process of connecting, give a little time for it to take effect
+	for( size_t tries=0; pImple_->state_==ClientPrivateMembers::State::Connecting && tries<10; ++tries )
 	{
-		pImple_->connection_->close( websocketpp::close::status::normal, "Had enough. Bye." );
-		pImple_->connection_=nullptr;
+		stateLock.unlock();
+		std::this_thread::sleep_for( std::chrono::milliseconds(50) );
+		stateLock.lock();
 	}
+
+	if( pImple_->state_==ClientPrivateMembers::State::Connected )
+	{
+		pImple_->state_=ClientPrivateMembers::State::Disconnecting;
+		if( pImple_->connection_ )
+		{
+			pImple_->connection_->close( websocketpp::close::status::normal, "Had enough. Bye." );
+			pImple_->connection_=nullptr;
+		}
+	}
+	// Don't worry if already disconnected, don't treat it as an error
 }
 
 void reverseshell::Client::setCertificateChainFile( const std::string& filename )
@@ -120,16 +146,22 @@ void reverseshell::Client::setVerifyFile( const std::string& filename )
 void reverseshell::ClientPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has opened on the client" << std::endl;
+	std::lock_guard<std::mutex> stateLock(stateMutex_);
+	state_=State::Connected;
 }
 
 void reverseshell::ClientPrivateMembers::on_close( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has closed on the client" << std::endl;
+	std::lock_guard<std::mutex> stateLock(stateMutex_);
+	state_=State::Ready;
 }
 
 void reverseshell::ClientPrivateMembers::on_interrupt( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has been interrupted on the client" << std::endl;
+	std::lock_guard<std::mutex> stateLock(stateMutex_);
+	state_=State::Ready;
 }
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ClientPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
