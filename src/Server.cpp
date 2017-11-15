@@ -49,6 +49,7 @@ namespace reverseshell
 		void on_open( websocketpp::connection_hdl hdl );
 		void on_close( websocketpp::connection_hdl hdl );
 		void on_interrupt( websocketpp::connection_hdl hdl );
+		void on_message( websocketpp::connection_hdl hdl, server_type::message_ptr );
 		std::shared_ptr<websocketpp::lib::asio::ssl::context> on_tls_init( websocketpp::connection_hdl hdl );
 	};
 }
@@ -143,6 +144,7 @@ reverseshell::ServerPrivateMembers::ServerPrivateMembers()
 	server_.set_open_handler( std::bind( &ServerPrivateMembers::on_open, this, std::placeholders::_1 ) );
 	server_.set_close_handler( std::bind( &ServerPrivateMembers::on_close, this, std::placeholders::_1 ) );
 	server_.set_interrupt_handler( std::bind( &ServerPrivateMembers::on_interrupt, this, std::placeholders::_1 ) );
+	server_.set_message_handler( std::bind( &ServerPrivateMembers::on_message, this, std::placeholders::_1, std::placeholders::_2 ) );
 	server_.init_asio();
 }
 
@@ -185,6 +187,11 @@ void reverseshell::ServerPrivateMembers::on_interrupt( websocketpp::connection_h
 {
 	std::cout << "Connection has been interrupted on the server" << std::endl;
 	if( !removeConnection(hdl) ) std::cout << "Couldn't find connection to remove" << std::endl;
+}
+
+void reverseshell::ServerPrivateMembers::on_message( websocketpp::connection_hdl hdl, server_type::message_ptr pMessage )
+{
+	std::cout << "Server received message " << pMessage->get_payload() << std::endl;
 }
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ServerPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )

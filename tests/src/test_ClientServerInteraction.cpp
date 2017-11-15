@@ -68,6 +68,7 @@ public:
 		// Block until the thread has started
 		condition_.wait( lock, [this](){ return threadHasStarted_; } );
 	}
+	void send( const std::string& message ) { client_.send(message); }
 protected:
 	void threadLoop( const std::string& uri )
 	{
@@ -110,6 +111,15 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9001/" ) );
+			std::this_thread::sleep_for( std::chrono::seconds(1) );
+		}
+		WHEN( "Sending messages from client to server" )
+		{
+			CHECK_NOTHROW( server.listen( 9002 ) );
+			ClientThread client;
+			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
+			CHECK_NOTHROW( client.connect( "wss://localhost:9002/" ) );
+			CHECK_NOTHROW( client.send("This is a message") );
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
 	} // end of 'GIVEN "An instance of a Server"'

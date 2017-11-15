@@ -46,6 +46,7 @@ namespace reverseshell
 		void setPrivateKeyFile( const std::string& filename );
 		void setVerifyFile( const std::string& filename );
 
+		void send( const std::string& message );
 	private:
 		/// Pimple idiom to hide the transport details
 		std::unique_ptr<class ClientPrivateMembers> pImple_;
