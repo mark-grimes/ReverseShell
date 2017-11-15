@@ -28,15 +28,14 @@ public:
 				catch(...){ std::cerr << "Unknown exception while starting server" << std::endl; }
 			} )
 	{
-		// No operation besides the initialiser list
-	}
-	~StartServer()
-	{
 		// Block until the thread has started, otherwise the "stop()" could get lost
 		{
 			std::unique_lock<std::mutex> lock(mutex_);
 			condition_.wait( lock, [this](){ return threadHasStarted_; } );
 		}
+	}
+	~StartServer()
+	{
 		server_.stop();
 		thread_.join();
 	}
@@ -56,8 +55,15 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 
 		WHEN( "Starting the server on a separate thread" )
 		{
-			//server.listen(9000);
+			// This just makes sure it doesn't throw and doesn't block
 			StartServer serverGuard( server, 9000 );
+		}
+		WHEN( "Starting the server and connecting the client to it" )
+		{
+			StartServer serverGuard( server, 9001 );
+			reverseshell::Client client;
+			std::this_thread::sleep_for( std::chrono::seconds(2) );
+			CHECK_NOTHROW( client.connect( "ws://localhost:9001/" ) );
 		}
 	} // end of 'GIVEN "An instance of a Server"'
 } // end of 'SCENARIO ... Client Server interaction'
