@@ -38,8 +38,22 @@ namespace reverseshell
 		Client( Client&& otherClient ) noexcept;
 		~Client();
 
-		/** @brief Attempts to connect to the URI provided. Blocks until the connection has been terminated. */
+		/** @brief Attempts to connect to the URI provided, but doesn't run the event loop.
+		 *
+		 * After a call to connect(), a call to run() should come almost immediately afterwards
+		 * to complete the connection sequence.
+		 */
 		void connect( const std::string& URI );
+
+		/** @brief Runs the event loop, blocking until the connection is closed.
+		 *
+		 * connect() must be called prior to this. The only reason run() and connect() are separate
+		 * calls is to allow thread organisation between the two. Otherwise, if the connection
+		 * sequence was transferred to another thread, calls to e.g. send() might fail because they
+		 * run before the other thread has a chance to connect.
+		 */
+		void run();
+
 		void disconnect();
 
 		void setCertificateChainFile( const std::string& filename );

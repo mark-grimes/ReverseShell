@@ -51,44 +51,25 @@ protected:
 class ClientThread
 {
 public:
-	ClientThread() : threadHasStarted_(false) {}
+	ClientThread() {}
 	~ClientThread()
 	{
 		client_.disconnect();
 		thread_.join();
 	}
 	void setVerifyFile( const std::string& filename ) { client_.setVerifyFile( filename ); }
-	void connect( const std::string& uri )
+	void connect( const std::string& uri ) { client_.connect( uri ); }
+	void run()
 	{
-		std::unique_lock<std::mutex> lock(mutex_);
-		threadHasStarted_=false;
-
-		thread_=std::thread( std::bind( &ClientThread::threadLoop, this, uri ) );
-
-		// Block until the thread has started
-		condition_.wait( lock, [this](){ return threadHasStarted_; } );
+		thread_=std::thread( [this](){
+			try { client_.run(); }
+			catch( const std::runtime_error& error ){ std::cerr << "Exception while connecting client: " << error.what() << std::endl; }
+			catch(...){ std::cerr << "Unknown exception while connecting client" << std::endl; }
+		} );
 	}
 	void send( const std::string& message ) { client_.send(message); }
 protected:
-	void threadLoop( const std::string& uri )
-	{
-		try
-		{
-			// Unlock the main thread
-			{
-				std::unique_lock<std::mutex> lock(mutex_);
-				threadHasStarted_=true;
-				condition_.notify_all();
-			}
-			client_.connect( uri );
-		}
-		catch( const std::runtime_error& error ){ std::cerr << "Exception while connecting client: " << error.what() << std::endl; }
-		catch(...){ std::cerr << "Unknown exception while connecting client" << std::endl; }
-	}
 	reverseshell::Client client_;
-	std::condition_variable condition_;
-	std::mutex mutex_;
-	bool threadHasStarted_;
 	std::thread thread_;
 };
 
@@ -104,6 +85,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 		WHEN( "Starting the server on a separate thread" )
 		{
 			CHECK_NOTHROW( server.listen( 9000 ) );
+			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
 		WHEN( "Starting the server and connecting the client to it" )
 		{
@@ -111,6 +93,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9001/" ) );
+			CHECK_NOTHROW( client.run() );
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
 		WHEN( "Sending messages from client to server" )
@@ -119,6 +102,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9002/" ) );
+			CHECK_NOTHROW( client.run() );
 			CHECK_NOTHROW( client.send("This is a message") );
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}

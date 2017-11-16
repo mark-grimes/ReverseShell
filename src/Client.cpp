@@ -87,31 +87,39 @@ reverseshell::Client::~Client()
 
 void reverseshell::Client::connect( const std::string& URI )
 {
-	{ // Block to limit scope of stateLock
-		std::unique_lock<std::mutex> stateLock(pImple_->stateMutex_);
-		// If in the process of disconnecting, give a little time for it to take effect
-		for( size_t tries=0; pImple_->state_==ClientPrivateMembers::State::Disconnecting && tries<10; ++tries )
-		{
-			stateLock.unlock();
-			std::this_thread::sleep_for( std::chrono::milliseconds(50) );
-			stateLock.lock();
-		}
+	std::unique_lock<std::mutex> stateLock(pImple_->stateMutex_);
+	// If in the process of disconnecting, give a little time for it to take effect
+	for( size_t tries=0; pImple_->state_==ClientPrivateMembers::State::Disconnecting && tries<10; ++tries )
+	{
+		stateLock.unlock();
+		std::this_thread::sleep_for( std::chrono::milliseconds(50) );
+		stateLock.lock();
+	}
 
-		pImple_->state_=ClientPrivateMembers::State::Connecting;
-		websocketpp::lib::error_code errorCode;
-		pImple_->connection_=pImple_->client_.get_connection( URI, errorCode );
-		if( errorCode.value()!=0 ) throw std::runtime_error( "Unable to get the websocketpp connection - "+errorCode.message() );
+	pImple_->state_=ClientPrivateMembers::State::Connecting;
+	websocketpp::lib::error_code errorCode;
+	pImple_->connection_=pImple_->client_.get_connection( URI, errorCode );
+	if( errorCode.value()!=0 ) throw std::runtime_error( "Unable to get the websocketpp connection - "+errorCode.message() );
 
-		if( errorCode )
-		{
-			pImple_->connection_=nullptr;
-			pImple_->state_=ClientPrivateMembers::State::Ready;
-			pImple_->client_.get_alog().write(websocketpp::log::alevel::app,errorCode.message());
-			throw std::runtime_error( errorCode.message() );
-		}
+	if( errorCode )
+	{
+		pImple_->connection_=nullptr;
+		pImple_->state_=ClientPrivateMembers::State::Ready;
+		pImple_->client_.get_alog().write(websocketpp::log::alevel::app,errorCode.message());
+		throw std::runtime_error( errorCode.message() );
+	}
 
-		pImple_->client_.connect( pImple_->connection_ );
-	} // Need to release stateLock before blocking in the run() call
+	pImple_->client_.connect( pImple_->connection_ );
+}
+
+void reverseshell::Client::run()
+{
+	std::unique_lock<std::mutex> stateLock(pImple_->stateMutex_);
+	if( pImple_->state_!=ClientPrivateMembers::State::Connecting )
+	{
+		throw std::runtime_error( "Client::run() called when not in the Connecting state (current state is '"+std::to_string(pImple_->state_)+"')" );
+	}
+	stateLock.unlock();
 	pImple_->client_.run();
 }
 
