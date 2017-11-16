@@ -51,6 +51,23 @@ namespace reverseshell
 	};
 }
 
+// Extend std::to_string so that it can print out the ClientPrivateMembers::State enum
+namespace std
+{
+	std::string to_string( const reverseshell::ClientPrivateMembers::State& state )
+	{
+		using State=reverseshell::ClientPrivateMembers::State;
+		switch( state )
+		{
+			case State::Ready: return "Ready";
+			case State::Connecting: return "Connecting";
+			case State::Connected: return "Connected";
+			case State::Disconnecting: return "Disconnecting";
+			default: return "<unknown>"; // Should never happen
+		}
+	}
+}
+
 reverseshell::Client::Client()
 	: pImple_( new ClientPrivateMembers )
 {
@@ -155,7 +172,7 @@ void reverseshell::Client::send( const std::string& message )
 		}
 		else throw std::runtime_error( "Client::send() invalid connection state" );
 	}
-	else throw std::runtime_error( "Client::send() called when not connected" );
+	else throw std::runtime_error( "Client::send() called when not connected (current state is '"+std::to_string(pImple_->state_)+"')" );
 }
 
 reverseshell::ClientPrivateMembers::ClientPrivateMembers()
