@@ -87,6 +87,10 @@ void reverseshell::Server::listen( size_t port )
 	}
 
 	pImple_->server_.start_accept();
+}
+
+void reverseshell::Server::run()
+{
 	pImple_->server_.run();
 }
 

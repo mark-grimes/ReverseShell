@@ -12,12 +12,13 @@ class ServerThread
 public:
 	ServerThread() : threadHasStarted_(false) {}
 	~ServerThread() { server_.stop(); thread_.join(); }
-	void listen( size_t port )
+	void listen( size_t port ) { server_.listen(port); }
+	void run()
 	{
 		std::unique_lock<std::mutex> lock(mutex_);
 		threadHasStarted_=false;
 
-		thread_=std::thread( std::bind( &ServerThread::threadLoop, this, port ) );
+		thread_=std::thread( std::bind( &ServerThread::threadLoop, this ) );
 
 		// Block until the thread hass started
 		condition_.wait( lock, [this](){ return threadHasStarted_; } );
@@ -25,7 +26,7 @@ public:
 	void setCertificateChainFile( const std::string& filename ) { server_.setCertificateChainFile( filename ); }
 	void setPrivateKeyFile( const std::string& filename ) { server_.setPrivateKeyFile( filename ); }
 protected:
-	void threadLoop( size_t port )
+	void threadLoop()
 	{
 		try
 		{
@@ -35,7 +36,7 @@ protected:
 				threadHasStarted_=true;
 				condition_.notify_all();
 			}
-			server_.listen(port);
+			server_.run();
 		}
 		catch( const std::runtime_error& error ){ std::cerr << "Exception while starting server: " << error.what() << std::endl; }
 		catch(...){ std::cerr << "Unknown exception while starting server" << std::endl; }
@@ -85,11 +86,13 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 		WHEN( "Starting the server on a separate thread" )
 		{
 			CHECK_NOTHROW( server.listen( 9000 ) );
+			CHECK_NOTHROW( server.run() );
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
 		WHEN( "Starting the server and connecting the client to it" )
 		{
 			CHECK_NOTHROW( server.listen( 9001 ) );
+			CHECK_NOTHROW( server.run() );
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9001/" ) );
@@ -99,6 +102,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 		WHEN( "Sending messages from client to server" )
 		{
 			CHECK_NOTHROW( server.listen( 9002 ) );
+			CHECK_NOTHROW( server.run() );
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9002/" ) );

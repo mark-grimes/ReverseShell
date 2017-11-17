@@ -40,6 +40,9 @@ namespace reverseshell
 
 		/** @brief Listen on the given port. */
 		void listen( size_t port );
+		/** @brief Start the event loop, blocking until the server is stopped. */
+		void run();
+
 		/** @brief Stops the server listening and unblocks the caller of "listen()". Must be called from another thread. */
 		void stop();
 
