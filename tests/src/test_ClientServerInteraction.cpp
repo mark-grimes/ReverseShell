@@ -87,7 +87,6 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 		{
 			CHECK_NOTHROW( server.listen( 9000 ) );
 			CHECK_NOTHROW( server.run() );
-			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
 		WHEN( "Starting the server and connecting the client to it" )
 		{
@@ -97,7 +96,6 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9001/" ) );
 			CHECK_NOTHROW( client.run() );
-			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
 		WHEN( "Sending messages from client to server" )
 		{
@@ -108,7 +106,6 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			CHECK_NOTHROW( client.connect( "wss://localhost:9002/" ) );
 			CHECK_NOTHROW( client.run() );
 			CHECK_NOTHROW( client.send("This is a message") );
-			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
 	} // end of 'GIVEN "An instance of a Server"'
 } // end of 'SCENARIO ... Client Server interaction'
