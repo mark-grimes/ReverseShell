@@ -48,6 +48,7 @@ namespace reverseshell
 		void on_interrupt( websocketpp::connection_hdl hdl );
 		void on_message( websocketpp::connection_hdl hdl, client_type::message_ptr );
 		std::shared_ptr<websocketpp::lib::asio::ssl::context> on_tls_init( websocketpp::connection_hdl hdl );
+		void send( const char* buffer, size_t size );
 	};
 }
 
@@ -163,24 +164,7 @@ void reverseshell::Client::setVerifyFile( const std::string& filename )
 
 void reverseshell::Client::send( const std::string& message )
 {
-	std::unique_lock<std::mutex> stateLock(pImple_->stateMutex_);
-	// If still in the process of forming a connection, wait until that has finished
-	while( pImple_->state_==ClientPrivateMembers::State::Connecting )
-	{
-		stateLock.unlock();
-		std::this_thread::sleep_for( std::chrono::milliseconds(50) );
-		stateLock.lock();
-	}
-
-	if( pImple_->state_==ClientPrivateMembers::State::Connected )
-	{
-		if( pImple_->connection_ )
-		{
-			pImple_->connection_->send( message );
-		}
-		else throw std::runtime_error( "Client::send() invalid connection state" );
-	}
-	else throw std::runtime_error( "Client::send() called when not connected (current state is '"+std::to_string(pImple_->state_)+"')" );
+	pImple_->send( message.data(), message.size() );
 }
 
 reverseshell::ClientPrivateMembers::ClientPrivateMembers()
@@ -222,6 +206,7 @@ void reverseshell::ClientPrivateMembers::on_interrupt( websocketpp::connection_h
 void reverseshell::ClientPrivateMembers::on_message( websocketpp::connection_hdl hdl, client_type::message_ptr pMessage )
 {
 	std::cout << "Client received message " << pMessage->get_payload() << std::endl;
+
 }
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ClientPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
@@ -257,4 +242,26 @@ std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ClientPrivat
 	if( !diffieHellmanParamsFileName_.empty() ) pSSLContext->use_tmp_dh_file( diffieHellmanParamsFileName_ );
 
 	return pSSLContext;
+}
+
+void reverseshell::ClientPrivateMembers::send( const char* buffer, size_t size )
+{
+	std::unique_lock<std::mutex> stateLock(stateMutex_);
+	// If still in the process of forming a connection, wait until that has finished
+	while( state_==State::Connecting )
+	{
+		stateLock.unlock();
+		std::this_thread::sleep_for( std::chrono::milliseconds(50) );
+		stateLock.lock();
+	}
+
+	if( state_==State::Connected )
+	{
+		if( connection_ )
+		{
+			connection_->send( buffer, size );
+		}
+		else throw std::runtime_error( "Client::send() invalid connection state" );
+	}
+	else throw std::runtime_error( "Client::send() called when not connected (current state is '"+std::to_string(state_)+"')" );
 }
