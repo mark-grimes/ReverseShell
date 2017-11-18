@@ -61,6 +61,8 @@ namespace reverseshell
 		void setVerifyFile( const std::string& filename );
 
 		void send( const std::string& message );
+
+		enum class MessageType { StdOut=0, StdErr };
 	private:
 		/// Pimple idiom to hide the transport details
 		std::unique_ptr<class ClientPrivateMembers> pImple_;

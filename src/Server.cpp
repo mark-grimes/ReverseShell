@@ -23,6 +23,7 @@
 #include <list>
 #include <websocketpp/server.hpp>
 #include <websocketpp/config/asio.hpp>
+#include "reverseshell/Client.h"
 
 //
 // Declaration of the pimple
@@ -215,7 +216,17 @@ void reverseshell::ServerPrivateMembers::on_interrupt( websocketpp::connection_h
 
 void reverseshell::ServerPrivateMembers::on_message( websocketpp::connection_hdl hdl, server_type::message_ptr pMessage )
 {
-	std::cout << "Server received message '" << pMessage->get_payload() << "'" << std::endl;
+	switch( static_cast<Client::MessageType>(pMessage->get_payload()[0]) )
+	{
+		case Client::MessageType::StdOut:
+			std::cout << "Server received stdout message '" << &pMessage->get_payload()[1] << "'" << std::endl;
+			break;
+		case Client::MessageType::StdErr:
+			std::cerr << "Server received stderr message '" << &pMessage->get_payload()[1] << "'" << std::endl;
+			break;
+		default:
+			std::cerr << "Server received unknown message type '" << pMessage->get_payload() << "'" << std::endl;
+	}
 }
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ServerPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
