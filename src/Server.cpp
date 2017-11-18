@@ -105,8 +105,25 @@ void reverseshell::Server::stop()
 		pImple_->isListening_=false;
 	}
 
-	std::lock_guard<std::mutex> currentConnectionsLock( pImple_->currentConnectionsMutex_ );
+	// First send the EOF signal (blank string) to the terminal on the other end to make the
+	// shell close properly. Wait a little while, and if the connection is still open force
+	// it to close.
+	std::unique_lock<std::mutex> currentConnectionsLock( pImple_->currentConnectionsMutex_ );
 	std::cout << "Stopping server with " << pImple_->currentConnections_.size() << " open connections" << std::endl;
+	for( auto& handle : pImple_->currentConnections_ )
+	{
+		auto pConnection=pImple_->server_.get_con_from_hdl(handle);
+		if( pConnection ) pConnection->send(""); // This is interpreted as EOF on the other end
+	}
+	// Give the connections a chance to close themselves
+	for( size_t attempts=0; attempts<10 && !pImple_->currentConnections_.empty(); ++attempts )
+	{
+		currentConnectionsLock.unlock();
+		std::this_thread::sleep_for( std::chrono::milliseconds(50) );
+		currentConnectionsLock.lock();
+	}
+	// Force close any that are still open
+	std::cout << "Force closing " << pImple_->currentConnections_.size() << " open connections" << std::endl;
 	for( auto& handle : pImple_->currentConnections_ )
 	{
 		auto pConnection=pImple_->server_.get_con_from_hdl(handle);
@@ -177,6 +194,9 @@ void reverseshell::ServerPrivateMembers::on_http( websocketpp::connection_hdl hd
 void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has opened on the server" << std::endl;
+	auto pConnection=server_.get_con_from_hdl(hdl);
+	// Send an arbitrary command while testing
+	pConnection->send("ls\n");
 	std::lock_guard<std::mutex> myMutex( currentConnectionsMutex_ );
 	currentConnections_.emplace_back( hdl );
 }
@@ -195,7 +215,7 @@ void reverseshell::ServerPrivateMembers::on_interrupt( websocketpp::connection_h
 
 void reverseshell::ServerPrivateMembers::on_message( websocketpp::connection_hdl hdl, server_type::message_ptr pMessage )
 {
-	std::cout << "Server received message " << pMessage->get_payload() << std::endl;
+	std::cout << "Server received message '" << pMessage->get_payload() << "'" << std::endl;
 }
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ServerPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
