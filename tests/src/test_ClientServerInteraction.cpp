@@ -1,5 +1,6 @@
 #include "reverseshell/Client.h"
 #include "reverseshell/Server.h"
+#include "reverseshell/Connection.h"
 #include <thread>
 #include <iostream>
 #include <condition_variable>
@@ -25,6 +26,7 @@ public:
 	}
 	void setCertificateChainFile( const std::string& filename ) { server_.setCertificateChainFile( filename ); }
 	void setPrivateKeyFile( const std::string& filename ) { server_.setPrivateKeyFile( filename ); }
+	void setNewConnectionCallback( std::function<void(reverseshell::Connection& connection)> connection ) { server_.setNewConnectionCallback(connection); }
 protected:
 	void threadLoop()
 	{
@@ -99,17 +101,38 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			// TODO add proper wait conditions in the destructors so that the process can finish without an explicit wait here
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 		}
-		WHEN( "Sending messages from client to server" )
+		WHEN( "Getting the remote shell to 'ls' the test files directory" )
 		{
+			// The test file directory is one where I know what the contents is, and
+			// its absolute location. Perform an ls on it to make sure the remote shell
+			// is doing what I say.
+			std::string remoteCout;
+			std::string remoteCerr;
+			auto coutFunc=[&remoteCout](const char* message, size_t size){ remoteCout.append( message, size ); };
+			auto cerrFunc=[&remoteCerr](const char* message, size_t size){ remoteCerr.append( message, size ); };
+			CHECK_NOTHROW( server.setNewConnectionCallback(
+					[&coutFunc,&cerrFunc]( reverseshell::Connection& connection )
+					{
+						connection.setStdOutCallback( coutFunc );
+						connection.setStdErrCallback( cerrFunc );
+						connection.send( "cd "+reverseshelltests::testinputs::testFileDirectory+"\n" );
+						connection.send( "ls\n" );
+					} ) );
+
 			CHECK_NOTHROW( server.listen( 9002 ) );
 			CHECK_NOTHROW( server.run() );
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9002/" ) );
 			CHECK_NOTHROW( client.run() );
-			CHECK_NOTHROW( client.send("This is a message") );
+
+
 			// TODO add proper wait conditions in the destructors so that the process can finish without an explicit wait here
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
+			CHECK( remoteCerr.empty() );
+			CHECK( remoteCout == "authority_cert.pem\n"
+			                     "server_cert.pem\n"
+			                     "server_key.pem\n" );
 		}
 	} // end of 'GIVEN "An instance of a Server"'
 } // end of 'SCENARIO ... Client Server interaction'

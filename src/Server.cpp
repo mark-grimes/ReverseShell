@@ -24,6 +24,7 @@
 #include <websocketpp/server.hpp>
 #include <websocketpp/config/asio.hpp>
 #include "reverseshell/Client.h"
+#include "reverseshell/Connection.h"
 
 //
 // Declaration of the pimple
@@ -35,7 +36,8 @@ namespace reverseshell
 	public:
 		typedef websocketpp::server<websocketpp::config::asio_tls> server_type;
 		server_type server_;
-		std::list<websocketpp::connection_hdl> currentConnections_;
+		std::function<void(reverseshell::Connection& connection)> newConnectionCallback_;
+		std::map<websocketpp::connection_hdl,reverseshell::Connection,std::owner_less<websocketpp::connection_hdl>> currentConnections_;
 		mutable std::mutex currentConnectionsMutex_;
 		bool isListening_;
 		mutable std::mutex isListeningMutex_;
@@ -52,6 +54,7 @@ namespace reverseshell
 		void on_interrupt( websocketpp::connection_hdl hdl );
 		void on_message( websocketpp::connection_hdl hdl, server_type::message_ptr );
 		std::shared_ptr<websocketpp::lib::asio::ssl::context> on_tls_init( websocketpp::connection_hdl hdl );
+		void connectionSend( websocketpp::connection_hdl hdl, const char* message, size_t size );
 	};
 }
 
@@ -111,9 +114,9 @@ void reverseshell::Server::stop()
 	// it to close.
 	std::unique_lock<std::mutex> currentConnectionsLock( pImple_->currentConnectionsMutex_ );
 	std::cout << "Stopping server with " << pImple_->currentConnections_.size() << " open connections" << std::endl;
-	for( auto& handle : pImple_->currentConnections_ )
+	for( auto& handleConnectionPair : pImple_->currentConnections_ )
 	{
-		auto pConnection=pImple_->server_.get_con_from_hdl(handle);
+		auto pConnection=pImple_->server_.get_con_from_hdl(handleConnectionPair.first);
 		if( pConnection ) pConnection->send(""); // This is interpreted as EOF on the other end
 	}
 	// Give the connections a chance to close themselves
@@ -125,9 +128,9 @@ void reverseshell::Server::stop()
 	}
 	// Force close any that are still open
 	std::cout << "Force closing " << pImple_->currentConnections_.size() << " open connections" << std::endl;
-	for( auto& handle : pImple_->currentConnections_ )
+	for( auto& handleConnectionPair : pImple_->currentConnections_ )
 	{
-		auto pConnection=pImple_->server_.get_con_from_hdl(handle);
+		auto pConnection=pImple_->server_.get_con_from_hdl(handleConnectionPair.first);
 		if( pConnection )
 		{
 			std::error_code errorCode;
@@ -154,6 +157,11 @@ void reverseshell::Server::setVerifyFile( const std::string& filename )
 	pImple_->verifyFileName_=filename;
 }
 
+void reverseshell::Server::setNewConnectionCallback( std::function<void(reverseshell::Connection& connection)> connection )
+{
+	pImple_->newConnectionCallback_=connection;
+}
+
 reverseshell::ServerPrivateMembers::ServerPrivateMembers()
 	: isListening_(false)
 {
@@ -175,9 +183,9 @@ bool reverseshell::ServerPrivateMembers::removeConnection( websocketpp::connecti
 	auto pConnection=server_.get_con_from_hdl(hdl);
 	std::lock_guard<std::mutex> currentConnectionsLock( currentConnectionsMutex_ );
 	auto findResult=std::find_if( currentConnections_.begin(), currentConnections_.end(),
-			[pConnection,this](const websocketpp::connection_hdl& storedHandle)
+			[pConnection,this](const std::pair<websocketpp::connection_hdl,reverseshell::Connection>& handleConnectionPair)
 			{
-				return pConnection==server_.get_con_from_hdl(storedHandle);
+				return pConnection==server_.get_con_from_hdl(handleConnectionPair.first);
 			} );
 	if( findResult!=currentConnections_.end() )
 	{
@@ -195,11 +203,16 @@ void reverseshell::ServerPrivateMembers::on_http( websocketpp::connection_hdl hd
 void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has opened on the server" << std::endl;
-	auto pConnection=server_.get_con_from_hdl(hdl);
-	// Send an arbitrary command while testing
-	pConnection->send("ls\n");
-	std::lock_guard<std::mutex> myMutex( currentConnectionsMutex_ );
-	currentConnections_.emplace_back( hdl );
+	std::pair<decltype(currentConnections_)::iterator,bool> result;
+	{
+		std::lock_guard<std::mutex> myMutex( currentConnectionsMutex_ );
+		std::function<void(const char* message, size_t size)> callback=std::bind( &ServerPrivateMembers::connectionSend, this, hdl, std::placeholders::_1, std::placeholders::_2 );
+		result=currentConnections_.emplace( std::make_pair( hdl, Connection( callback ) ) );
+	}
+	if( newConnectionCallback_ )
+	{
+		newConnectionCallback_( result.first->second );
+	}
 }
 
 void reverseshell::ServerPrivateMembers::on_close( websocketpp::connection_hdl hdl )
@@ -216,13 +229,16 @@ void reverseshell::ServerPrivateMembers::on_interrupt( websocketpp::connection_h
 
 void reverseshell::ServerPrivateMembers::on_message( websocketpp::connection_hdl hdl, server_type::message_ptr pMessage )
 {
+	std::lock_guard<std::mutex> currentConnectionsLock( currentConnectionsMutex_ );
+	auto iFindResult=currentConnections_.find( hdl );
+
 	switch( static_cast<Client::MessageType>(pMessage->get_payload()[0]) )
 	{
 		case Client::MessageType::StdOut:
-			std::cout << "Server received stdout message '" << &pMessage->get_payload()[1] << "'" << std::endl;
+			iFindResult->second.stdout()( &pMessage->get_payload()[1], pMessage->get_payload().size()-1 );
 			break;
 		case Client::MessageType::StdErr:
-			std::cerr << "Server received stderr message '" << &pMessage->get_payload()[1] << "'" << std::endl;
+			iFindResult->second.stderr()( &pMessage->get_payload()[1], pMessage->get_payload().size()-1 );
 			break;
 		default:
 			std::cerr << "Server received unknown message type '" << pMessage->get_payload() << "'" << std::endl;
@@ -262,4 +278,10 @@ std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ServerPrivat
 	if( !diffieHellmanParamsFileName_.empty() ) pSSLContext->use_tmp_dh_file( diffieHellmanParamsFileName_ );
 
 	return pSSLContext;
+}
+
+void reverseshell::ServerPrivateMembers::connectionSend( websocketpp::connection_hdl hdl, const char* message, size_t size )
+{
+	auto pConnection=server_.get_con_from_hdl(hdl);
+	if( pConnection ) pConnection->send( message, size );
 }

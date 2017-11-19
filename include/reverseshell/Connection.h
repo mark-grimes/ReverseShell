@@ -18,47 +18,40 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef INCLUDEGUARD_reverseshell_Server_h
-#define INCLUDEGUARD_reverseshell_Server_h
+#ifndef INCLUDEGUARD_reverseshell_Connection_h
+#define INCLUDEGUARD_reverseshell_Connection_h
 
 #include <memory>
+#include <functional>
 namespace reverseshell
 {
-	class Connection;
+	class ServerPrivateMembers;
 }
 
-
 namespace reverseshell
 {
-	/** @brief The server that accepts connections from Clients and provides a command interface to their shells.
+	/** @brief Represents the server side connection from a single client.
 	 *
 	 * @author Mark Grimes (mark.grimes@rymapt.com)
-	 * @date 14/Nov/2017
+	 * @date 18/Nov/2017
 	 * @copyright Copyright 2017 Rymapt Ltd. Released under the MIT licence (available from https://opensource.org/licenses/MIT).
 	 */
-	class Server
+	class Connection
 	{
 	public:
-		Server();
-		Server( Server&& otherServer ) noexcept;
-		~Server();
+		~Connection();
 
-		/** @brief Listen on the given port. */
-		void listen( size_t port );
-		/** @brief Start the event loop, blocking until the server is stopped. */
-		void run();
-
-		/** @brief Stops the server listening and unblocks the caller of "listen()". Must be called from another thread. */
-		void stop();
-
-		void setCertificateChainFile( const std::string& filename );
-		void setPrivateKeyFile( const std::string& filename );
-		void setVerifyFile( const std::string& filename );
-
-		void setNewConnectionCallback( std::function<void(reverseshell::Connection& connection)> connection );
+		void send( const char* message, size_t size );
+		void send( const std::string& message );
+		void setStdOutCallback( std::function<void(const char*, size_t)> callback );
+		void setStdErrCallback( std::function<void(const char*, size_t)> callback );
 	private:
+		friend class reverseshell::ServerPrivateMembers;
+		Connection( std::function<void(const char*, size_t)> sendFunction );
+		const std::function<void(const char*, size_t)>& stdout();
+		const std::function<void(const char*, size_t)>& stderr();
 		/// Pimple idiom to hide the transport details
-		std::unique_ptr<class ServerPrivateMembers> pImple_;
+		std::shared_ptr<class ConnectionPrivateMembers> pImple_;
 	};
 
 } // end of namespace reverseshell
