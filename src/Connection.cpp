@@ -40,6 +40,12 @@ namespace reverseshell
 	};
 }
 
+reverseshell::Connection::Connection()
+	: pImple_( nullptr )
+{
+	// No operation.
+}
+
 reverseshell::Connection::Connection( std::function<void(const char*, size_t)> sendFunction )
 	: pImple_( std::make_shared<ConnectionPrivateMembers>( sendFunction ) )
 {
@@ -53,21 +59,25 @@ reverseshell::Connection::~Connection()
 
 void reverseshell::Connection::send( const char* message, size_t size )
 {
+	if( !pImple_ ) throw std::runtime_error("reverseshell::Connection::send() - Invalid Connection object");
 	pImple_->sendFunction_( message, size );
 }
 
 void reverseshell::Connection::send( const std::string& message )
 {
+	if( !pImple_ ) throw std::runtime_error("reverseshell::Connection::send() - Invalid Connection object");
 	pImple_->sendFunction_( message.data(), message.size() );
 }
 
 void reverseshell::Connection::setStdOutCallback( std::function<void(const char*, size_t)> callback )
 {
+	if( !pImple_ ) throw std::runtime_error("reverseshell::Connection::setStdOutCallback() - Invalid Connection object");
 	pImple_->stdOutCallback_=callback;
 }
 
 void reverseshell::Connection::setStdErrCallback( std::function<void(const char*, size_t)> callback )
 {
+	if( !pImple_ ) throw std::runtime_error("reverseshell::Connection::setStdErrCallback() - Invalid Connection object");
 	pImple_->stdErrCallback_=callback;
 }
 

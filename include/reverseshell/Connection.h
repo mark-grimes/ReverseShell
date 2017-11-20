@@ -39,6 +39,10 @@ namespace reverseshell
 	class Connection
 	{
 	public:
+		/** @brief Creates a Connection in an invalid state.
+		 *
+		 * Only useful for creating a variable that will later be assigned to. */
+		Connection();
 		~Connection();
 
 		void send( const char* message, size_t size );
