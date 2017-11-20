@@ -361,6 +361,18 @@ void reverseshell::ClientPrivateMembers::shellLoop()
 			// Slow the loop slightly, since nothing here blocks
 			//
 			std::this_thread::sleep_for( std::chrono::milliseconds(10) );
+		} // End of loop checking shell output and error streams
+
+		// If the shell has finished, close the connection
+		std::unique_lock<std::mutex> stateLock(stateMutex_);
+		if( state_==ClientPrivateMembers::State::Connected )
+		{
+			state_=ClientPrivateMembers::State::Disconnecting;
+			if( connection_ )
+			{
+				connection_->close( websocketpp::close::status::normal, "Shell finished" );
+				connection_=nullptr;
+			}
 		}
 	}
 	catch( const std::runtime_error& error ){ std::cerr << "Exception in shell thread: " << error.what() << std::endl; }
