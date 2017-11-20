@@ -40,7 +40,8 @@ include_directories( ${OPENSSL_INCLUDE_DIR} )
 
 include_directories( "${CMAKE_SOURCE_DIR}/include" )
 aux_source_directory( "${CMAKE_SOURCE_DIR}/src" library_sources )
-list( REMOVE_ITEM library_sources "${CMAKE_SOURCE_DIR}/src/main.cpp" ) # main.cpp belongs only in the executable
+list( REMOVE_ITEM library_sources "${CMAKE_SOURCE_DIR}/src/main_client.cpp" ) # belongs only in the executable
+list( REMOVE_ITEM library_sources "${CMAKE_SOURCE_DIR}/src/main_server.cpp" ) # belongs only in the executable
 
 add_library( ${PROJECT_NAME}_LIB STATIC ${library_sources} "${CMAKE_BINARY_DIR}/src/version.cpp" )
 target_link_libraries( ${PROJECT_NAME}_LIB ${OPENSSL_LIBRARIES} )
@@ -49,8 +50,10 @@ if( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	# the code uses std::thread.
 	target_link_libraries( ${PROJECT_NAME}_LIB "pthread" )
 endif()
-add_executable( ${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/src/main.cpp" )
-target_link_libraries( ${PROJECT_NAME} ${PROJECT_NAME}_LIB )
+add_executable( ${PROJECT_NAME}Client "${CMAKE_SOURCE_DIR}/src/main_client.cpp" )
+target_link_libraries( ${PROJECT_NAME}Client ${PROJECT_NAME}_LIB )
+add_executable( ${PROJECT_NAME}Server "${CMAKE_SOURCE_DIR}/src/main_server.cpp" )
+target_link_libraries( ${PROJECT_NAME}Server ${PROJECT_NAME}_LIB )
 
 install( TARGETS ${PROJECT_NAME}_LIB DESTINATION lib )
 install( DIRECTORY "${CMAKE_SOURCE_DIR}/include/" DESTINATION include )
