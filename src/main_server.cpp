@@ -52,7 +52,7 @@ void userInputLoop()
 			{
 				input.clear();
 				std::cout << "\nconn> ";
-				std::cin >> input;
+				std::getline( std::cin, input );
 				if( std::cin.eof() )
 				{
 					std::cout << "\nGot EOF" << std::endl;
