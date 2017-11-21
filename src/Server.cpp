@@ -25,6 +25,7 @@
 #include <websocketpp/config/asio.hpp>
 #include "reverseshell/Client.h"
 #include "reverseshell/Connection.h"
+#include "reverseshell/version.h"
 
 //
 // Declaration of the pimple
@@ -175,6 +176,7 @@ reverseshell::ServerPrivateMembers::ServerPrivateMembers()
 	server_.set_close_handler( std::bind( &ServerPrivateMembers::on_close, this, std::placeholders::_1 ) );
 	server_.set_interrupt_handler( std::bind( &ServerPrivateMembers::on_interrupt, this, std::placeholders::_1 ) );
 	server_.set_message_handler( std::bind( &ServerPrivateMembers::on_message, this, std::placeholders::_1, std::placeholders::_2 ) );
+	server_.set_user_agent( "ReverseShellServer/"+std::string(reverseshell::version::GitDescribe) );
 	server_.init_asio();
 }
 
@@ -203,6 +205,14 @@ void reverseshell::ServerPrivateMembers::on_http( websocketpp::connection_hdl hd
 void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has opened on the server" << std::endl;
+	auto pConnection=server_.get_con_from_hdl(hdl);
+	if( pConnection )
+	{
+		std::cout << "Connection to '" << pConnection->get_host()
+				<< "' and resource '" << pConnection->get_resource()
+				<< "' from '"<< pConnection->get_remote_endpoint()
+				<< "'. User-Agent is '" << pConnection->get_request_header("User-Agent") << "'." << std::endl;
+	}
 	std::pair<decltype(currentConnections_)::iterator,bool> result;
 	{
 		std::lock_guard<std::mutex> myMutex( currentConnectionsMutex_ );
@@ -218,6 +228,11 @@ void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hd
 void reverseshell::ServerPrivateMembers::on_close( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has closed on the server" << std::endl;
+	auto pConnection=server_.get_con_from_hdl(hdl);
+	if( pConnection )
+	{
+		std::cout << "Remote code was " << pConnection->get_remote_close_code() << " with reason '" << pConnection->get_remote_close_reason() << "'" << std::endl;
+	}
 	if( !removeConnection(hdl) ) std::cout << "Couldn't find connection to remove" << std::endl;
 }
 

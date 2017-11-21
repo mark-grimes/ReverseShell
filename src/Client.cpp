@@ -23,6 +23,7 @@
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio.hpp>
 #include <pstream.h>
+#include "reverseshell/version.h"
 
 //
 // Declaration of the pimple
@@ -188,6 +189,7 @@ reverseshell::ClientPrivateMembers::ClientPrivateMembers()
 	client_.set_close_handler( std::bind( &ClientPrivateMembers::on_close, this, std::placeholders::_1 ) );
 	client_.set_interrupt_handler( std::bind( &ClientPrivateMembers::on_interrupt, this, std::placeholders::_1 ) );
 	client_.set_message_handler( std::bind( &ClientPrivateMembers::on_message, this, std::placeholders::_1, std::placeholders::_2 ) );
+	client_.set_user_agent( "ReverseShellClient/"+std::string(reverseshell::version::GitDescribe) );
 }
 
 reverseshell::ClientPrivateMembers::~ClientPrivateMembers()
@@ -218,6 +220,11 @@ void reverseshell::ClientPrivateMembers::on_open( websocketpp::connection_hdl hd
 void reverseshell::ClientPrivateMembers::on_close( websocketpp::connection_hdl hdl )
 {
 	std::cout << "Connection has closed on the client" << std::endl;
+	auto pConnection=client_.get_con_from_hdl(hdl);
+	if( pConnection )
+	{
+		std::cout << "Remote code was " << pConnection->get_remote_close_code() << " with reason '" << pConnection->get_remote_close_reason() << "'" << std::endl;
+	}
 	std::lock_guard<std::mutex> stateLock(stateMutex_);
 	state_=State::Ready;
 
