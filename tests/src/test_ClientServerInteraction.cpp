@@ -131,8 +131,13 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 			CHECK( remoteCerr.empty() );
 			CHECK( remoteCout == "authorityA_cert.pem\n"
+			                     "authorityB_cert.pem\n"
+			                     "serverA_cert_expired.pem\n"
 			                     "serverA_cert.pem\n"
-			                     "serverA_key.pem\n" );
+			                     "serverA_key.pem\n"
+			                     "serverB_cert_expired.pem\n"
+			                     "serverB_cert.pem\n"
+			                     "serverB_key.pem\n" );
 		}
 	} // end of 'GIVEN "An instance of a Server"'
 } // end of 'SCENARIO ... Client Server interaction'
