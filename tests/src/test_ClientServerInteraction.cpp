@@ -81,8 +81,8 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 	GIVEN( "An instance of a Server" )
 	{
 		ServerThread server;
-		server.setCertificateChainFile(reverseshelltests::testinputs::testFileDirectory+"/server_cert.pem");
-		server.setPrivateKeyFile(reverseshelltests::testinputs::testFileDirectory+"/server_key.pem");
+		server.setCertificateChainFile(reverseshelltests::testinputs::testFileDirectory+"/serverA_cert.pem");
+		server.setPrivateKeyFile(reverseshelltests::testinputs::testFileDirectory+"/serverA_key.pem");
 
 
 		WHEN( "Starting the server on a separate thread" )
@@ -95,7 +95,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			CHECK_NOTHROW( server.listen( 9001 ) );
 			CHECK_NOTHROW( server.run() );
 			ClientThread client;
-			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
+			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authorityA_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9001/" ) );
 			CHECK_NOTHROW( client.run() );
 			// TODO add proper wait conditions in the destructors so that the process can finish without an explicit wait here
@@ -122,7 +122,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			CHECK_NOTHROW( server.listen( 9002 ) );
 			CHECK_NOTHROW( server.run() );
 			ClientThread client;
-			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authority_cert.pem") );
+			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authorityA_cert.pem") );
 			CHECK_NOTHROW( client.connect( "wss://localhost:9002/" ) );
 			CHECK_NOTHROW( client.run() );
 
@@ -130,9 +130,9 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			// TODO add proper wait conditions in the destructors so that the process can finish without an explicit wait here
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 			CHECK( remoteCerr.empty() );
-			CHECK( remoteCout == "authority_cert.pem\n"
-			                     "server_cert.pem\n"
-			                     "server_key.pem\n" );
+			CHECK( remoteCout == "authorityA_cert.pem\n"
+			                     "serverA_cert.pem\n"
+			                     "serverA_key.pem\n" );
 		}
 	} // end of 'GIVEN "An instance of a Server"'
 } // end of 'SCENARIO ... Client Server interaction'
