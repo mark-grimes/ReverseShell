@@ -68,3 +68,27 @@ if( BUILD_UNITTESTS )
 	add_executable( ${PROJECT_NAME}Tests ${unittests_sources} "${PROJECT_BINARY_DIR}/tests/src/testinputs.cpp" )
 	target_link_libraries( ${PROJECT_NAME}Tests ${PROJECT_NAME}_LIB )
 endif()
+
+#
+# Add a target to create a docker container for the server
+#
+if( "${CMAKE_SYSTEM}" MATCHES "Linux" )
+	find_program( DOCKER_COMMAND docker )
+	if( NOT ${DOCKER_COMMAND} MATCHES "NOTFOUND" )
+		# Copy the required system libraries to a separate directory
+		add_custom_command( OUTPUT "${CMAKE_BINARY_DIR}/dockerSystemLibs"
+			COMMAND ${CMAKE_SOURCE_DIR}/scripts/extractDynamicLibs.sh ${PROJECT_NAME}Server "${CMAKE_BINARY_DIR}/dockerSystemLibs" )
+		# Copy the Dockerfile because docker insists it's in the build context
+		add_custom_command( OUTPUT "${CMAKE_BINARY_DIR}/Dockerfile"
+			COMMAND cp "${CMAKE_SOURCE_DIR}/Dockerfile" "${CMAKE_BINARY_DIR}/Dockerfile"
+			DEPENDS "${CMAKE_SOURCE_DIR}/Dockerfile" )
+		# Create the image and use the short git hash as the tag
+		add_custom_target( docker_container
+			COMMAND docker build -t reverseshell-server:`git show --pretty=format:%h -s` "${CMAKE_BINARY_DIR}"
+			DEPENDS "${CMAKE_BINARY_DIR}/Dockerfile" "${CMAKE_BINARY_DIR}/dockerSystemLibs" ${PROJECT_NAME}Server )
+	else()
+		message( STATUS "Not adding the target \"docker_container\" because the docker command was not found" )
+	endif()
+else()
+	message( STATUS "Not adding the target \"docker_container\" because this isn't a Linux build" )
+endif()
