@@ -22,6 +22,7 @@
 #define INCLUDEGUARD_reverseshell_Server_h
 
 #include <memory>
+#include <functional>
 namespace reverseshell
 {
 	class Connection;
