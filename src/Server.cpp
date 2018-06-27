@@ -114,7 +114,7 @@ void reverseshell::Server::stop()
 	// shell close properly. Wait a little while, and if the connection is still open force
 	// it to close.
 	std::unique_lock<std::mutex> currentConnectionsLock( pImple_->currentConnectionsMutex_ );
-	std::cout << "Stopping server with " << pImple_->currentConnections_.size() << " open connections" << std::endl;
+	pImple_->server_.get_alog().write( websocketpp::log::alevel::app, "Stopping server with "+std::to_string(pImple_->currentConnections_.size())+" open connections" );
 	for( auto& handleConnectionPair : pImple_->currentConnections_ )
 	{
 		auto pConnection=pImple_->server_.get_con_from_hdl(handleConnectionPair.first);
@@ -128,7 +128,7 @@ void reverseshell::Server::stop()
 		currentConnectionsLock.lock();
 	}
 	// Force close any that are still open
-	std::cout << "Force closing " << pImple_->currentConnections_.size() << " open connections" << std::endl;
+	pImple_->server_.get_alog().write( websocketpp::log::alevel::app, "Force closing "+std::to_string(pImple_->currentConnections_.size())+" open connections" );
 	for( auto& handleConnectionPair : pImple_->currentConnections_ )
 	{
 		auto pConnection=pImple_->server_.get_con_from_hdl(handleConnectionPair.first);
@@ -166,7 +166,8 @@ void reverseshell::Server::setNewConnectionCallback( std::function<void(reverses
 reverseshell::ServerPrivateMembers::ServerPrivateMembers()
 	: isListening_(false)
 {
-	server_.set_access_channels(websocketpp::log::alevel::none);
+	server_.clear_access_channels(websocketpp::log::alevel::all);
+	server_.set_access_channels(websocketpp::log::alevel::app);
 	//server_.set_error_channels(websocketpp::log::elevel::all ^ websocketpp::log::elevel::info);
 	server_.set_error_channels(websocketpp::log::elevel::all);
 	//server_.set_error_channels(websocketpp::log::elevel::none);
@@ -199,19 +200,19 @@ bool reverseshell::ServerPrivateMembers::removeConnection( websocketpp::connecti
 
 void reverseshell::ServerPrivateMembers::on_http( websocketpp::connection_hdl hdl )
 {
-	std::cout << "HTTP connection requested" << std::endl;
+	server_.get_alog().write( websocketpp::log::alevel::app, "HTTP connection requested" );
 }
 
 void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has opened on the server" << std::endl;
+	server_.get_alog().write( websocketpp::log::alevel::app, "Connection has opened on the server" );
 	auto pConnection=server_.get_con_from_hdl(hdl);
 	if( pConnection )
 	{
-		std::cout << "Connection to '" << pConnection->get_host()
-				<< "' and resource '" << pConnection->get_resource()
-				<< "' from '"<< pConnection->get_remote_endpoint()
-				<< "'. User-Agent is '" << pConnection->get_request_header("User-Agent") << "'." << std::endl;
+		server_.get_alog().write( websocketpp::log::alevel::app, "Connection to '"+pConnection->get_host()
+				+ "' and resource '" + pConnection->get_resource()
+				+ "' from '" + pConnection->get_remote_endpoint()
+				+ "'. User-Agent is '" + pConnection->get_request_header("User-Agent") + "'." );
 	}
 	std::pair<decltype(currentConnections_)::iterator,bool> result;
 	{
@@ -227,19 +228,19 @@ void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hd
 
 void reverseshell::ServerPrivateMembers::on_close( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has closed on the server" << std::endl;
+	server_.get_alog().write( websocketpp::log::alevel::app, "Connection has closed on the server" );
 	auto pConnection=server_.get_con_from_hdl(hdl);
 	if( pConnection )
 	{
-		std::cout << "Remote code was " << pConnection->get_remote_close_code() << " with reason '" << pConnection->get_remote_close_reason() << "'" << std::endl;
+		server_.get_alog().write( websocketpp::log::alevel::app, "Remote code was "+std::to_string(pConnection->get_remote_close_code())+" with reason '"+pConnection->get_remote_close_reason()+"'" );
 	}
-	if( !removeConnection(hdl) ) std::cout << "Couldn't find connection to remove" << std::endl;
+	if( !removeConnection(hdl) ) server_.get_alog().write( websocketpp::log::alevel::app, "Couldn't find connection to remove" );
 }
 
 void reverseshell::ServerPrivateMembers::on_interrupt( websocketpp::connection_hdl hdl )
 {
-	std::cout << "Connection has been interrupted on the server" << std::endl;
-	if( !removeConnection(hdl) ) std::cout << "Couldn't find connection to remove" << std::endl;
+	server_.get_alog().write( websocketpp::log::alevel::app, "Connection has been interrupted on the server" );
+	if( !removeConnection(hdl) ) server_.get_alog().write( websocketpp::log::alevel::app, "Couldn't find connection to remove" );
 }
 
 void reverseshell::ServerPrivateMembers::on_message( websocketpp::connection_hdl hdl, server_type::message_ptr pMessage )
@@ -262,7 +263,7 @@ void reverseshell::ServerPrivateMembers::on_message( websocketpp::connection_hdl
 
 std::shared_ptr<websocketpp::lib::asio::ssl::context> reverseshell::ServerPrivateMembers::on_tls_init( websocketpp::connection_hdl hdl )
 {
-	std::cout << "TLS is being initiated in the server" << std::endl;
+	server_.get_alog().write( websocketpp::log::alevel::app, "TLS is being initiated in the server" );
 	namespace asio=websocketpp::lib::asio;
 	auto pSSLContext=std::make_shared<websocketpp::lib::asio::ssl::context>(asio::ssl::context::tlsv12);
 	// Try and copy the "intermediate" SSL (actually TLS) settings from
