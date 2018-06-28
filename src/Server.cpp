@@ -251,10 +251,10 @@ void reverseshell::ServerPrivateMembers::on_message( websocketpp::connection_hdl
 	switch( static_cast<Client::MessageType>(pMessage->get_payload()[0]) )
 	{
 		case Client::MessageType::StdOut:
-			iFindResult->second.stdout()( &pMessage->get_payload()[1], pMessage->get_payload().size()-1 );
+			iFindResult->second.callback()( Connection::MessageType::StdOut, &pMessage->get_payload()[1], pMessage->get_payload().size()-1 );
 			break;
 		case Client::MessageType::StdErr:
-			iFindResult->second.stderr()( &pMessage->get_payload()[1], pMessage->get_payload().size()-1 );
+			iFindResult->second.callback()( Connection::MessageType::StdErr, &pMessage->get_payload()[1], pMessage->get_payload().size()-1 );
 			break;
 		default:
 			std::cerr << "Server received unknown message type '" << pMessage->get_payload() << "'" << std::endl;

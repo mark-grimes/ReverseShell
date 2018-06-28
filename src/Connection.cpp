@@ -32,8 +32,7 @@ namespace reverseshell
 	class ConnectionPrivateMembers
 	{
 	public:
-		std::function<void(const char*, size_t)> stdOutCallback_;
-		std::function<void(const char*, size_t)> stdErrCallback_;
+		std::function<void(Connection::MessageType, const char*, size_t)> messageCallback_;
 		std::function<void(const char*, size_t)> sendFunction_;
 
 		ConnectionPrivateMembers( std::function<void(const char*, size_t)> sendFunction );
@@ -69,31 +68,31 @@ void reverseshell::Connection::send( const std::string& message )
 	pImple_->sendFunction_( message.data(), message.size() );
 }
 
-void reverseshell::Connection::setStdOutCallback( std::function<void(const char*, size_t)> callback )
+void reverseshell::Connection::setMessageCallback( std::function<void(Connection::MessageType, const char*, size_t)> callback )
 {
 	if( !pImple_ ) throw std::runtime_error("reverseshell::Connection::setStdOutCallback() - Invalid Connection object");
-	pImple_->stdOutCallback_=callback;
+	pImple_->messageCallback_=callback;
 }
 
-void reverseshell::Connection::setStdErrCallback( std::function<void(const char*, size_t)> callback )
+const std::function<void(reverseshell::Connection::MessageType, const char*, size_t)>& reverseshell::Connection::callback()
 {
-	if( !pImple_ ) throw std::runtime_error("reverseshell::Connection::setStdErrCallback() - Invalid Connection object");
-	pImple_->stdErrCallback_=callback;
-}
-
-const std::function<void(const char*, size_t)>& reverseshell::Connection::stdout()
-{
-	return pImple_->stdOutCallback_;
-}
-
-const std::function<void(const char*, size_t)>& reverseshell::Connection::stderr()
-{
-	return pImple_->stdErrCallback_;
+	return pImple_->messageCallback_;
 }
 
 reverseshell::ConnectionPrivateMembers::ConnectionPrivateMembers( std::function<void(const char*, size_t)> sendFunction )
 	: sendFunction_( sendFunction )
 {
-	stdOutCallback_=[]( const char* message, size_t size ){ std::cout.write( message, size ); std::cout.flush(); };
-	stdErrCallback_=[]( const char* message, size_t size ){ std::cerr.write( message, size ); std::cout.flush(); };
+	messageCallback_=[]( Connection::MessageType type, const char* message, size_t size ){
+		switch( type )
+		{
+			case Connection::MessageType::StdOut:
+				std::cout.write( message, size );
+				std::cout.flush();
+				break;
+			case Connection::MessageType::StdErr:
+				std::cerr.write( message, size );
+				std::cerr.flush();
+				break;
+		} // end of switch on MessageType
+	};
 }

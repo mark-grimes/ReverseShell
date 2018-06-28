@@ -108,13 +108,15 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			// is doing what I say.
 			std::string remoteCout;
 			std::string remoteCerr;
-			auto coutFunc=[&remoteCout](const char* message, size_t size){ remoteCout.append( message, size ); };
-			auto cerrFunc=[&remoteCerr](const char* message, size_t size){ remoteCerr.append( message, size ); };
+			auto messageFunc=[&remoteCout,&remoteCerr](reverseshell::Connection::MessageType type, const char* message, size_t size){
+				if( type==reverseshell::Connection::MessageType::StdOut ) remoteCout.append( message, size );
+				else if( type==reverseshell::Connection::MessageType::StdErr ) remoteCerr.append( message, size );
+				else std::cerr << "test_ClientServerInteraction got an unexpected message" << std::endl;
+			};
 			CHECK_NOTHROW( server.setNewConnectionCallback(
-					[&coutFunc,&cerrFunc]( reverseshell::Connection& connection )
+					[&messageFunc]( reverseshell::Connection& connection )
 					{
-						connection.setStdOutCallback( coutFunc );
-						connection.setStdErrCallback( cerrFunc );
+						connection.setMessageCallback( messageFunc );
 						connection.send( "cd "+reverseshelltests::testinputs::testFileDirectory+"\n" );
 						connection.send( "ls\n" );
 					} ) );

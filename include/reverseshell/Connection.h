@@ -47,13 +47,13 @@ namespace reverseshell
 
 		void send( const char* message, size_t size );
 		void send( const std::string& message );
-		void setStdOutCallback( std::function<void(const char*, size_t)> callback );
-		void setStdErrCallback( std::function<void(const char*, size_t)> callback );
+
+		enum class MessageType { StdOut=0, StdErr };
+		void setMessageCallback( std::function<void(Connection::MessageType, const char*, size_t)> callback );
 	private:
 		friend class reverseshell::ServerPrivateMembers;
 		Connection( std::function<void(const char*, size_t)> sendFunction );
-		const std::function<void(const char*, size_t)>& stdout();
-		const std::function<void(const char*, size_t)>& stderr();
+		const std::function<void(Connection::MessageType, const char*, size_t)>& callback();
 		/// Pimple idiom to hide the transport details
 		std::shared_ptr<class ConnectionPrivateMembers> pImple_;
 	};
