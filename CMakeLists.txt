@@ -84,7 +84,7 @@ if( "${CMAKE_SYSTEM}" MATCHES "Linux" )
 			DEPENDS "${CMAKE_SOURCE_DIR}/Dockerfile" )
 		# Create the image and use the short git hash as the tag
 		add_custom_target( docker_container
-			COMMAND docker build -t reverseshell-server:`git show --pretty=format:%h -s` -t reverseshell-server:latest "${CMAKE_BINARY_DIR}"
+			COMMAND docker build -t reverseshell-server:`(cd ${CMAKE_CURRENT_SOURCE_DIR} && git show --pretty=format:%h -s) ` -t reverseshell-server:latest "${CMAKE_BINARY_DIR}"
 			DEPENDS "${CMAKE_BINARY_DIR}/Dockerfile" "${CMAKE_BINARY_DIR}/dockerSystemLibs" ${PROJECT_NAME}Server )
 	else()
 		message( STATUS "Not adding the target \"docker_container\" because the docker command was not found" )

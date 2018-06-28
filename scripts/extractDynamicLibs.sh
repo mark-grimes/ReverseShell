@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/sh
 #
 # Extracts all the dynamic libraries required by an executable to another directory.
 # The intention is that you can then add just that directory and the executable to
