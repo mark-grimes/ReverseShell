@@ -147,6 +147,9 @@ int main( int argc, char* argv[] )
 	       | clara::Opt( port, "port number" )
 	             ["-p"]["--port"]
 	             ("The port to listen on for connections")
+	       | clara::Opt( scriptDirectory, "input script directory" )
+	             ["-s"]["--script-dir"]
+	             ("The directory to look for update scripts in")
 	       | clara::Help( printHelp );
 
 	auto parseResult=cli.parse( clara::Args( argc, argv ) );
