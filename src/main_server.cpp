@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <fstream>
 #include <array>
+#include <chrono>
 #include <clara.hpp>
 #include "reverseshell/Server.h"
 #include "reverseshell/Connection.h"
