@@ -109,17 +109,20 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 			// is doing what I say.
 			std::string remoteCout;
 			std::string remoteCerr;
+			bool hasConnected=false;
 			auto messageFunc=[&remoteCout,&remoteCerr](reverseshell::Connection::MessageType type, const char* message, size_t size){
 				if( type==reverseshell::Connection::MessageType::StdOut ) remoteCout.append( message, size );
 				else if( type==reverseshell::Connection::MessageType::StdErr ) remoteCerr.append( message, size );
 				else std::cerr << "test_ClientServerInteraction got an unexpected message" << std::endl;
 			};
 			CHECK_NOTHROW( server.setNewConnectionCallback(
-					[&messageFunc]( reverseshell::Connection& connection )
+					[&messageFunc,&hasConnected]( reverseshell::Connection& connection )
 					{
 						connection.setMessageCallback( messageFunc );
 						connection.send( "cd "+reverseshelltests::testinputs::testFileDirectory+"\n" );
 						connection.send( "ls\n" );
+						connection.send( "" ); // Disconnect
+						hasConnected=true;
 					} ) );
 
 			CHECK_NOTHROW( server.listen(0) ); // Use OS allocated port
@@ -132,6 +135,7 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 
 			// TODO add proper wait conditions in the destructors so that the process can finish without an explicit wait here
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
+			REQUIRE( hasConnected==true );
 			CHECK( remoteCerr.empty() );
 			CHECK( remoteCout == "authorityA_cert.pem\n"
 			                     "authorityB_cert.pem\n"
