@@ -45,4 +45,4 @@ SCENARIO( "Test that myfilesystem::canonical works as expected", "[myfilesystem]
 		// The above line should knock off the "/testdata/" part, i.e. 10 characters
 		REQUIRE( result==testFileDirectory.substr(0,testFileDirectory.size()-10) );
 	}
-} // end of 'SCENARIO ... SomeClass'
+} // end of 'SCENARIO ... myfilesystem::canonical'
