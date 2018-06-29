@@ -58,5 +58,8 @@ SCENARIO( "Test that reverseshell::tools::sanitiseHostname works as expected", "
 		CHECK( result=="" );
 		REQUIRE_NOTHROW( result=reverseshell::tools::sanitiseHostname("www.google.com.") );
 		CHECK( result=="www.google.com" );
+		// Make sure the edge cases are okay
+		REQUIRE_NOTHROW( result=reverseshell::tools::sanitiseHostname("Aa.Z-z09") );
+		CHECK( result=="Aa.Z-z09" );
 	}
 } // end of 'SCENARIO ... reverseshell::tools::sanitiseHostname'
