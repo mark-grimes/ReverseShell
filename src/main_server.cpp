@@ -27,6 +27,8 @@
 #include <clara.hpp>
 #include "reverseshell/Server.h"
 #include "reverseshell/Connection.h"
+#include "reverseshell/tools.h"
+#include "myfilesystem.h"
 
 const std::string* pScriptDirectory=nullptr;
 const std::string* pLogOutputDirectory=nullptr;
@@ -78,16 +80,42 @@ void messageCallback( std::shared_ptr<ConnectionState> pState, reverseshell::Con
 {
 	if( pState->hostname.empty() )
 	{
+		std::string reportedHostname;
 		if( size>0 && type==reverseshell::Connection::MessageType::StdOut )
 		{
-			if( message[size-1]=='\n' ) pState->hostname=std::string( message, size-1 );
-			else pState->hostname=std::string( message, size );
+			if( message[size-1]=='\n' ) reportedHostname=std::string( message, size-1 );
+			else reportedHostname=std::string( message, size );
 		}
-		std::cout << "[" << PrintTime() << "] "  << "Connection has hostname '" << pState->hostname << "'" << std::endl;
+		pState->hostname=reverseshell::tools::sanitiseHostname(reportedHostname);
+		if( pState->hostname.size()!=reportedHostname.size() )
+		{
+			std::cout << "[" << PrintTime() << "] Connection reported hostname '" << reportedHostname << "' appears invalid. Closing connection." << std::endl;
+			pState->connection.send("");
+			// TODO force close the connection
+			pState->hostname="";
+			return;
+		}
+		else std::cout << "[" << PrintTime() << "] Connection reported hostname '" << pState->hostname << "'" << std::endl;
 
 		// See if there is a script file for this hostname
-		std::string scriptFilename(*pScriptDirectory + "/" + pState->hostname + ".sh");
-		std::ifstream inputScript( scriptFilename );
+		std::error_code error;
+		std::string scriptFilename=myfilesystem::canonical( *pScriptDirectory + "/" + pState->hostname + ".sh", error );
+		std::ifstream inputScript;
+
+		if( !error )
+		{
+			// Make sure the potential file is in the allowed directory. A malicious client could try to get
+			// details by reporting a hostname like "../../../secretFile.txt"
+			if( scriptFilename.find(*pScriptDirectory)==0 ) inputScript.open( scriptFilename );
+			else
+			{
+				std::cout << "[" << PrintTime() << "] Warning: script file '" << scriptFilename << "' is outside the allowed directory. Closing connection." << std::endl;
+				pState->connection.send("");
+				// TODO force close the connection
+				return;
+			}
+		}
+
 		if( !inputScript.is_open() )
 		{
 			std::cout << "[" << PrintTime() << "] "  << "Unable to open script '" << scriptFilename << "'" << std::endl;
@@ -102,6 +130,7 @@ void messageCallback( std::shared_ptr<ConnectionState> pState, reverseshell::Con
 
 		if( inputScript.is_open() )
 		{
+			std::cout << "[" << PrintTime() << "] Opened script '" << scriptFilename << "'" << std::endl;
 			std::array<char,256> buffer;
 			while( !inputScript.fail() )
 			{
@@ -169,12 +198,16 @@ int main( int argc, char* argv[] )
 
 	try
 	{
+		// Make sure that the script directory is canonical. Need to check that files match the start of
+		// this so that the server doesn't leek files not in this directory.
+		scriptDirectory=myfilesystem::canonical( scriptDirectory );
+
 		reverseshell::Server server;
 		server.setNewConnectionCallback( newConnectionCallback );
 
 		if( !certFilename.empty() ) server.setCertificateChainFile( certFilename );
 		if( !keyFilename.empty() ) server.setPrivateKeyFile( keyFilename );
-		std::cout << "Listening on port " << port << std::endl;
+		std::cout << "Listening on port " << port << " with scripts from " << scriptDirectory << std::endl;
 		server.listen( port );
 		server.run();
 	}
