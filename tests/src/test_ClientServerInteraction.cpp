@@ -27,6 +27,7 @@ public:
 	void setCertificateChainFile( const std::string& filename ) { server_.setCertificateChainFile( filename ); }
 	void setPrivateKeyFile( const std::string& filename ) { server_.setPrivateKeyFile( filename ); }
 	void setNewConnectionCallback( std::function<void(reverseshell::Connection& connection)> connection ) { server_.setNewConnectionCallback(connection); }
+	int port() const { return server_.port(); }
 protected:
 	void threadLoop()
 	{
@@ -87,12 +88,12 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 
 		WHEN( "Starting the server on a separate thread" )
 		{
-			CHECK_NOTHROW( server.listen( 9000 ) );
+			CHECK_NOTHROW( server.listen(0) ); // Use "0" to let OS pick port (otherwise fails if run in quick succession)
 			CHECK_NOTHROW( server.run() );
 		}
 		WHEN( "Starting the server and connecting the client to it" )
 		{
-			CHECK_NOTHROW( server.listen( 9001 ) );
+			CHECK_NOTHROW( server.listen(0) ); // Use OS allocated port
 			CHECK_NOTHROW( server.run() );
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authorityA_cert.pem") );
@@ -121,11 +122,11 @@ SCENARIO( "Test that reverseshell::Client and reverseshell::Server can interact 
 						connection.send( "ls\n" );
 					} ) );
 
-			CHECK_NOTHROW( server.listen( 9002 ) );
+			CHECK_NOTHROW( server.listen(0) ); // Use OS allocated port
 			CHECK_NOTHROW( server.run() );
 			ClientThread client;
 			CHECK_NOTHROW( client.setVerifyFile(reverseshelltests::testinputs::testFileDirectory+"/authorityA_cert.pem") );
-			CHECK_NOTHROW( client.connect( "wss://localhost:9002/" ) );
+			CHECK_NOTHROW( client.connect( "wss://localhost:"+std::to_string(server.port())+"/" ) );
 			CHECK_NOTHROW( client.run() );
 
 

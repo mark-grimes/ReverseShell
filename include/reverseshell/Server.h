@@ -57,6 +57,9 @@ namespace reverseshell
 		void setVerifyFile( const std::string& filename );
 
 		void setNewConnectionCallback( std::function<void(reverseshell::Connection& connection)> connection );
+
+		/** @brief The port being listened on. Useful if "0" was passed to listen() to test using OS allocated ports. */
+		int port() const;
 	private:
 		/// Pimple idiom to hide the transport details
 		std::unique_ptr<class ServerPrivateMembers> pImple_;

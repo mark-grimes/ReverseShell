@@ -163,6 +163,14 @@ void reverseshell::Server::setNewConnectionCallback( std::function<void(reverses
 	pImple_->newConnectionCallback_=connection;
 }
 
+int reverseshell::Server::port() const
+{
+	std::error_code error;
+	auto endpoint=pImple_->server_.get_local_endpoint(error);
+	if( !error ) return endpoint.port();
+	else return -1;
+}
+
 reverseshell::ServerPrivateMembers::ServerPrivateMembers()
 	: isListening_(false)
 {
