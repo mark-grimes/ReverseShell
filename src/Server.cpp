@@ -217,10 +217,14 @@ void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hd
 	auto pConnection=server_.get_con_from_hdl(hdl);
 	if( pConnection )
 	{
+		// If the server is behind a load balancer, then get_remote_endpoint() will just show the
+		// address of the load balancer. In that case see if the load balancer has set the
+		// "X-Forwarded-For" header.
 		server_.get_alog().write( websocketpp::log::alevel::app, "Connection to '"+pConnection->get_host()
 				+ "' and resource '" + pConnection->get_resource()
 				+ "' from '" + pConnection->get_remote_endpoint()
-				+ "'. User-Agent is '" + pConnection->get_request_header("User-Agent") + "'." );
+				+ "'. User-Agent is '" + pConnection->get_request_header("User-Agent")
+				+ "' with X-Forwarded-For header '" + pConnection->get_request_header("X-Forwarded-For") + "'." );
 	}
 	std::pair<decltype(currentConnections_)::iterator,bool> result;
 	{
