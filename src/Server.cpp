@@ -208,7 +208,16 @@ bool reverseshell::ServerPrivateMembers::removeConnection( websocketpp::connecti
 
 void reverseshell::ServerPrivateMembers::on_http( websocketpp::connection_hdl hdl )
 {
-	server_.get_alog().write( websocketpp::log::alevel::app, "HTTP connection requested" );
+	auto pConnection=server_.get_con_from_hdl(hdl);
+	if( pConnection )
+	{
+		server_.get_alog().write( websocketpp::log::alevel::app, "HTTP connection requested to '"+pConnection->get_host()
+				+ "' and resource '" + pConnection->get_resource()
+				+ "' from '" + pConnection->get_remote_endpoint()
+				+ "'. User-Agent is '" + pConnection->get_request_header("User-Agent")
+				+ "' with X-Forwarded-For header '" + pConnection->get_request_header("X-Forwarded-For") + "'." );
+	}
+	else server_.get_alog().write( websocketpp::log::alevel::app, "HTTP connection requested" );
 }
 
 void reverseshell::ServerPrivateMembers::on_open( websocketpp::connection_hdl hdl )
