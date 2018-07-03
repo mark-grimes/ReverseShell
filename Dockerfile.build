@@ -1,0 +1,20 @@
+#
+# This Dockerfile can be used to create a development environment that can build
+# the project. Docker has been added so that the environment can also build container
+# images for release. To create release images, you probably want to use your host
+# docker daemon by sharing the docker socket ("-v /var/run/docker.sock:/var/run/docker.sock"
+# option when starting this container).
+#
+# This is an example of the minimum required, your environment might already have everything
+# in which case you don't need this image.
+#
+# Mark Grimes (mark.grimes@rymapt.com)
+# 03/Jul/2018
+#
+FROM alpine
+
+RUN apk add --no-cache alpine-sdk cmake openssl-dev linux-headers
+
+RUN apk add --no-cache docker
+
+WORKDIR /work
