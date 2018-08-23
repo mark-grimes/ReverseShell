@@ -55,8 +55,8 @@ target_link_libraries( ${PROJECT_NAME}Client ${PROJECT_NAME}_LIB )
 add_executable( ${PROJECT_NAME}Server "${CMAKE_SOURCE_DIR}/src/main_server.cpp" )
 target_link_libraries( ${PROJECT_NAME}Server ${PROJECT_NAME}_LIB )
 
-install( TARGETS ${PROJECT_NAME}_LIB DESTINATION lib )
-install( DIRECTORY "${CMAKE_SOURCE_DIR}/include/" DESTINATION include )
+# Only install the client. Most uses will be for the client, assume anyone running a server can install manually
+install( TARGETS ${PROJECT_NAME}Client DESTINATION bin )
 
 option( BUILD_UNITTESTS "Build unit tests" ON )
 message( STATUS "BUILD_UNITTESTS: ${BUILD_UNITTESTS}" )
